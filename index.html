@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Product Tradeoff Framework</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0C0E12;
+    --surface: #14171E;
+    --surface-2: #1A1E28;
+    --border: #2A2F3C;
+    --text: #E8E9ED;
+    --text-dim: #8B90A0;
+    --text-muted: #5C6178;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+
+  .hero { padding: 60px 0 40px; text-align: center; }
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    color: #4AE3B5; margin-bottom: 16px;
+    opacity: 0; animation: fadeUp 0.6s ease forwards;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(32px, 5vw, 56px); line-height: 1.1; font-weight: 400;
+    opacity: 0; animation: fadeUp 0.6s ease 0.1s forwards;
+  }
+  .hero h1 span {
+    background: linear-gradient(135deg, #4AE3B5, #F5A623);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero-sub {
+    font-size: 16px; color: var(--text-dim); max-width: 520px;
+    margin: 16px auto 0; font-weight: 300;
+    opacity: 0; animation: fadeUp 0.6s ease 0.2s forwards;
+  }
+
+  .main-grid {
+    display: grid; grid-template-columns: 280px 1fr;
+    gap: 32px; padding: 20px 0 60px; align-items: start;
+  }
+
+  .sidebar { position: sticky; top: 24px; }
+  .sidebar-section { margin-bottom: 28px; }
+  .sidebar-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 12px;
+  }
+
+  .persona-btn {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 12px 14px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text-dim); font-family: 'DM Sans', sans-serif;
+    font-size: 14px; cursor: pointer; transition: all 0.25s ease;
+    margin-bottom: 8px; text-align: left;
+  }
+  .persona-btn:hover { background: var(--surface-2); color: var(--text); }
+  .persona-btn.active {
+    border-color: var(--persona-color, #4AE3B5); background: var(--surface-2);
+    color: var(--text); box-shadow: 0 0 0 1px var(--persona-color, #4AE3B5);
+  }
+  .persona-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .persona-btn .persona-task {
+    display: block; font-size: 11px; color: var(--text-muted); font-weight: 300; margin-top: 1px;
+  }
+  .compare-hint { font-size: 12px; color: var(--text-muted); font-weight: 300; padding: 0 4px; line-height: 1.6; }
+
+  .dim-legend { display: flex; flex-direction: column; gap: 8px; }
+  .dim-legend-item {
+    display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px;
+    border-radius: 8px; background: var(--surface); border: 1px solid transparent;
+    transition: all 0.2s ease;
+  }
+  .dim-legend-item:hover { border-color: var(--border); cursor: pointer; }
+  .dim-legend-item.active { border-color: #4AE3B5; background: var(--surface-2); }
+  .dim-legend-item .dim-icon { font-size: 14px; margin-top: 1px; }
+  .dim-legend-item .dim-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; display: block; }
+  .dim-legend-item .dim-desc { font-size: 11px; color: var(--text-muted); font-weight: 300; line-height: 1.5; }
+
+  .chart-area {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 40px; display: flex; flex-direction: column; align-items: center;
+  }
+  .chart-wrapper { position: relative; width: 100%; max-width: 560px; aspect-ratio: 1; }
+  .chart-wrapper svg { width: 100%; height: 100%; overflow: visible; }
+
+  .detail-panel { width: 100%; max-width: 560px; margin-top: 32px; padding-top: 28px; border-top: 1px solid var(--border); }
+  .detail-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .detail-header .detail-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .detail-header h3 { font-family: 'DM Serif Display', serif; font-size: 22px; font-weight: 400; }
+  .detail-header .detail-task { font-size: 14px; color: var(--text-dim); font-weight: 300; margin-left: auto; }
+  .detail-bars { display: flex; flex-direction: column; gap: 12px; }
+  .detail-bar-row { display: grid; grid-template-columns: 130px 1fr 40px; gap: 12px; align-items: center; }
+  .detail-bar-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .detail-bar-track { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+  .detail-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.23, 1, 0.32, 1); }
+  .detail-bar-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); text-align: right; }
+
+  .detail-insight { margin-top: 20px; padding: 16px; background: var(--surface-2); border-radius: 10px; border-left: 3px solid var(--text-muted); }
+  .detail-insight .insight-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+  .detail-insight p { font-size: 14px; color: var(--text-dim); font-weight: 300; line-height: 1.7; }
+  .detail-insight .pattern-tag {
+    display: inline-block; padding: 2px 8px; background: rgba(74, 227, 181, 0.1);
+    color: #4AE3B5; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; margin-top: 8px;
+  }
+
+  .comparison-note {
+    text-align: center; margin-top: 24px; padding: 14px 20px; background: var(--surface-2);
+    border-radius: 10px; font-size: 13px; color: var(--text-dim); font-weight: 300;
+    max-width: 560px; width: 100%;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    z-index: 10000; display: flex; align-items: center; justify-content: center;
+    padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto;
+    padding: 36px; position: relative;
+    transform: translateY(16px) scale(0.97);
+    transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .modal-overlay.open .modal { transform: translateY(0) scale(1); }
+  .modal-close {
+    position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
+    border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text-muted); font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;
+  }
+  .modal-close:hover { color: var(--text); border-color: var(--text-muted); }
+
+  .modal .dim-detail-title { font-family: 'DM Serif Display', serif; font-size: 26px; font-weight: 400; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+  .modal .dim-subtitle { font-size: 14px; color: var(--text-muted); font-weight: 300; margin-bottom: 20px; font-style: italic; }
+  .modal .dim-spectrum { display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+  .modal .spec-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .modal .spec-bar { flex: 1; height: 3px; border-radius: 2px; margin: 0 14px; }
+  .modal .dim-detail-body { font-size: 15px; color: var(--text-dim); font-weight: 300; line-height: 1.85; }
+  .modal .dim-detail-body strong { color: var(--text); font-weight: 500; }
+  .modal .dim-questions { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .modal .dim-questions-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+  .modal .dim-q { font-size: 14px; color: var(--text-dim); font-weight: 300; padding: 6px 0 6px 14px; border-left: 2px solid var(--border); margin-bottom: 8px; line-height: 1.6; transition: border-color 0.2s ease; }
+  .modal .dim-q:hover { border-left-color: var(--text-muted); }
+  .modal .dim-persona-scores { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .modal .dim-persona-scores-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+  .modal .dim-score-row { display: grid; grid-template-columns: 140px 1fr 36px; gap: 12px; align-items: center; margin-bottom: 8px; }
+  .modal .dim-score-name { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .modal .dim-score-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .modal .dim-score-track { height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+  .modal .dim-score-fill { height: 100%; border-radius: 3px; transition: width 0.5s cubic-bezier(0.23, 1, 0.32, 1); }
+  .modal .dim-score-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); text-align: right; }
+
+  .footer { padding: 32px 0; border-top: 1px solid var(--border); text-align: center; }
+  .footer p { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); }
+  .footer a { color: #4AE3B5; text-decoration: none; }
+
+  @media (max-width: 820px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .sidebar-section { margin-bottom: 0; }
+    .chart-area { padding: 24px; }
+    .container { padding: 0 16px; }
+  }
+  @media (max-width: 540px) { .sidebar { grid-template-columns: 1fr; } }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <section class="hero">
+    <div class="hero-label">AI Product Strategy</div>
+    <h1>The <span>Tradeoff</span> Radar</h1>
+    <p class="hero-sub">Five dimensions. Different shapes for different users. Select personas to compare their tradeoff profiles.</p>
+  </section>
+
+  <div class="main-grid">
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Personas</div>
+        <p class="compare-hint">Click to toggle. Select multiple to overlay and compare.</p>
+        <div style="margin-top: 12px;" id="persona-buttons"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Dimensions</div>
+        <div class="dim-legend">
+          <div class="dim-legend-item" onclick="toggleDim('accuracy')" data-dim="accuracy">
+            <span class="dim-icon">🎯</span>
+            <div><span class="dim-name">Accuracy</span><span class="dim-desc">How right does it need to be?</span></div>
+          </div>
+          <div class="dim-legend-item" onclick="toggleDim('speed')" data-dim="speed">
+            <span class="dim-icon">⚡</span>
+            <div><span class="dim-name">Speed</span><span class="dim-desc">Latency tolerance</span></div>
+          </div>
+          <div class="dim-legend-item" onclick="toggleDim('cost')" data-dim="cost">
+            <span class="dim-icon">💰</span>
+            <div><span class="dim-name">Cost Sensitivity</span><span class="dim-desc">Total cost (human + compute + loops)</span></div>
+          </div>
+          <div class="dim-legend-item" onclick="toggleDim('stakes')" data-dim="stakes">
+            <span class="dim-icon">⚠️</span>
+            <div><span class="dim-name">Stakes</span><span class="dim-desc">Cost of being wrong</span></div>
+          </div>
+          <div class="dim-legend-item" onclick="toggleDim('transparency')" data-dim="transparency">
+            <span class="dim-icon">🔎</span>
+            <div><span class="dim-name">Transparency Cost</span><span class="dim-desc">Investment to make output checkable</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-area">
+      <div class="chart-wrapper">
+        <svg id="radar-svg"></svg>
+      </div>
+      <div id="detail-panel"></div>
+    </div>
+  </div>
+
+  <section class="footer">
+    <p>The AI Product Tradeoff Framework · <a href="https://aiproductstrategist.com">aiproductstrategist.com</a></p>
+  </section>
+</div>
+
+<div class="modal-overlay" id="dim-modal" onclick="closeDimModal(event)">
+  <div class="modal" id="dim-modal-content">
+    <button class="modal-close" onclick="closeDimModalForce()">✕</button>
+    <div id="dim-modal-body"></div>
+  </div>
+</div>
+
+<script>
+const personas = [
+  {
+    id: 'swe',
+    name: 'Software Engineer',
+    task: 'Code generation & debugging',
+    color: '#4AE3B5',
+    values: { accuracy: 65, speed: 90, cost: 30, stakes: 50, transparency: 5 },
+    pattern: 'Single-shot',
+    insight: 'Code is the most naturally checkable AI output. You run it and it either works or it doesn\'t. There is almost no product investment needed to make the output transparent because the feedback loop is instant and built into the user\'s existing workflow (compiler, test suite, browser). Engineers tolerate lower accuracy because self-correction is cheap. The real priority is speed: sub-second autocomplete and fast generation keep them in flow state. Use smaller, faster models and stream aggressively.'
+  },
+  {
+    id: 'smm',
+    name: 'Social Media Manager',
+    task: 'Content drafting & repurposing',
+    color: '#F5A623',
+    values: { accuracy: 40, speed: 85, cost: 70, stakes: 25, transparency: 10 },
+    pattern: 'Iterative',
+    insight: 'Creative content is naturally self-evident. The user reads the draft and instantly knows if it matches their voice and intent. There is no hidden layer to check. Almost zero product investment is needed in transparency features because the artifact IS the evaluation. Stakes are low: a mediocre post gets low engagement, not a lawsuit. They will iterate 2-3 times to dial in voice and format. Optimize for speed and volume. Cost sensitivity is real because these teams often have tight tool budgets.'
+  },
+  {
+    id: 'designer',
+    name: 'UX Designer',
+    task: 'Copywriting & user research analysis',
+    color: '#A8E06C',
+    values: { accuracy: 55, speed: 75, cost: 50, stakes: 30, transparency: 20 },
+    pattern: 'Iterative',
+    insight: 'UI copy and microcopy are almost entirely self-evident. Designers have strong aesthetic judgment and know immediately if the text works. Where transparency cost rises is user research synthesis: when the AI summarizes interview transcripts, the designer cannot tell if themes are comprehensive or if important signals were missed without reading the raw transcripts. That sub-task needs source linking and quote attribution. Consider offering different transparency layers for different sub-tasks within the same tool.'
+  },
+  {
+    id: 'sales',
+    name: 'Sales Rep',
+    task: 'Email outreach & proposal writing',
+    color: '#FF8A65',
+    values: { accuracy: 60, speed: 90, cost: 50, stakes: 50, transparency: 35 },
+    pattern: 'Single-shot',
+    insight: 'Email copy itself is self-evident: the rep reads it and knows if it sounds right. But the factual claims embedded in the email (company revenue, prospect role, product specs) are NOT checkable by default. You need to surface where each data point came from, highlight unverified claims, or link back to CRM records. This is a moderate product investment. Speed is critical since reps live in their inbox. The real danger is hallucinated prospect details: low-frequency but deal-killing when they happen.'
+  },
+  {
+    id: 'pm',
+    name: 'Product Manager',
+    task: 'Research synthesis & strategy docs',
+    color: '#7B8CFF',
+    values: { accuracy: 75, speed: 55, cost: 40, stakes: 60, transparency: 55 },
+    pattern: 'Iterative',
+    insight: 'Research synthesis sits in the middle of the transparency spectrum. The narrative reads clearly, but the conclusions depend on source quality and completeness that the user cannot evaluate from the output alone. PMs have enough domain knowledge to catch obviously wrong claims, but they cannot verify nuance or omissions without drilling into sources. Making this checkable requires citations, source links, and ideally a "sources used" panel. Expect 3-4 refinement loops as they shape framing and emphasis.'
+  },
+  {
+    id: 'student',
+    name: 'Student',
+    task: 'Research & essay writing',
+    color: '#C792EA',
+    values: { accuracy: 80, speed: 55, cost: 90, stakes: 60, transparency: 70 },
+    pattern: 'Iterative',
+    insight: 'The essay might read well, but are the facts right? Are the citations real? Students lack the domain knowledge to spot errors because they are learning the material for the first time. Making this output checkable requires significant product investment: inline citations with source previews, confidence indicators on factual claims, clear flags when the AI is uncertain, and ideally direct links to source material. Without these, students will unknowingly submit hallucinated content. Stakes are meaningful since a fabricated citation means a failing grade.'
+  },
+  {
+    id: 'legal',
+    name: 'Legal / Compliance',
+    task: 'Contract review & regulatory analysis',
+    color: '#E85D75',
+    values: { accuracy: 95, speed: 20, cost: 15, stakes: 95, transparency: 90 },
+    pattern: 'Agentic + HITL',
+    insight: 'Contract analysis is extremely difficult to make checkable. The core question, "did the AI catch everything?", is nearly impossible to answer from the output alone. Making this transparent requires massive product investment: clause-level citations back to the original document, cross-references to regulatory databases, per-finding confidence scores, redline views, and completeness metrics. Speed is irrelevant. Correctness is everything. Human-in-the-loop is mandatory, not optional. Cost is a non-factor when the alternative is legal exposure.'
+  },
+  {
+    id: 'exec',
+    name: 'C-Suite Executive',
+    task: 'Strategic briefings & decision support',
+    color: '#5EC4E8',
+    values: { accuracy: 85, speed: 30, cost: 10, stakes: 90, transparency: 95 },
+    pattern: 'Agentic',
+    insight: 'Strategic synthesis is the hardest AI output to make checkable. The reasoning chain from raw data to a strategic recommendation involves judgment calls, weighting of competing signals, and assumptions that are invisible in the final deliverable. Even with citations, an executive cannot evaluate whether the AI weighted the right factors or missed a critical signal. Making this transparent requires layered drill-downs, explicit assumption surfacing, scenario comparisons, and sensitivity analysis. Stakes are high: decisions based on flawed synthesis compound across the organization. Cost is irrelevant.'
+  }
+];
+
+const dimensions = ['accuracy', 'speed', 'cost', 'stakes', 'transparency'];
+const dimLabels = ['Accuracy', 'Speed', 'Cost Sensitivity', 'Stakes', 'Transparency Cost'];
+
+const dimDetails = {
+  accuracy: {
+    icon: '🎯', title: 'Accuracy', color: '#4AE3B5',
+    spectrumLow: 'Vibes OK', spectrumHigh: 'Must be exact',
+    body: `Not every AI feature needs to be right 99% of the time. <strong>Accuracy requirements are set by the task context, not by what's technically achievable.</strong> A brainstorming assistant at 70% accuracy is delightful because it surfaces ideas you would not have considered. A medical coding tool at 70% accuracy is a liability. The key product decision is identifying the <strong>minimum accuracy threshold</strong> where your user switches from "this is useful" to "this is broken." Below that threshold, no amount of speed or cost savings will matter.`,
+    questions: [
+      'What happens when the AI is wrong? Does the user notice immediately or downstream?',
+      'Is "directionally correct" good enough, or does precision matter?',
+      'Can you add confidence scores to let users calibrate trust?',
+      'Would your users rather have a fast 80% answer or a slow 95% answer?'
+    ]
+  },
+  speed: {
+    icon: '⚡', title: 'Speed', color: '#F5A623',
+    spectrumLow: 'Batch / async', spectrumHigh: 'Sub-second',
+    body: `Speed requirements should <strong>drive model selection, not the other way around.</strong> An inline autocomplete that takes 3 seconds is dead on arrival. A weekly analytics report that takes 3 minutes is fine. The mistake most teams make is defaulting to the fastest model everywhere, sacrificing accuracy for latency that users don't actually need. Map your feature to the user's workflow rhythm: are they in a <strong>flow state</strong> (needs instant response), a <strong>review state</strong> (tolerates seconds), or a <strong>delegation state</strong> (tolerates minutes)?`,
+    questions: [
+      'Is the user waiting on screen, or will they context-switch and come back?',
+      'Could you stream partial results to reduce perceived latency?',
+      'Would a faster, less accurate model with a "refine" button outperform a slow, accurate one?',
+      'Does your latency budget include the full round-trip, or just inference time?'
+    ]
+  },
+  cost: {
+    icon: '💰', title: 'Total Cost', color: '#E85D75',
+    spectrumLow: 'Budget-conscious', spectrumHigh: 'Cost-insensitive',
+    body: `API tokens are the obvious cost. <strong>They're rarely the biggest one.</strong> Total cost is a composite of three factors: <strong>Human effort</strong> (time spent crafting prompts, reviewing outputs, correcting mistakes), <strong>Compute</strong> (tokens × model tier), and the <strong>Loop tax</strong> (every refinement iteration multiplies both human and compute cost). A "cheap" small-model call that requires 4 human review loops is more expensive than a single large-model call that gets it right the first time. The loop count is your real cost metric. Track it.`,
+    questions: [
+      'How many refinement loops does the average user need to reach satisfaction?',
+      'What is the fully-loaded cost per task, including human review time?',
+      'Could investing in a better prompt or model tier reduce loops enough to lower total cost?',
+      'Are you optimizing for cost per API call, or cost per successful outcome?'
+    ]
+  },
+  stakes: {
+    icon: '⚠️', title: 'Stakes', color: '#7B8CFF',
+    spectrumLow: 'Easy redo', spectrumHigh: 'Irreversible',
+    body: `Stakes determine your <strong>minimum accuracy floor and whether human review is mandatory, not optional.</strong> Accuracy on a 0-100 scale does not capture that some tasks have <strong>asymmetric consequences</strong> for being wrong. A bad recipe suggestion costs 20 minutes. A bad compliance classification costs millions. A missed medical flag costs lives. High-stakes features need guardrails that are architecturally enforced, not just best-effort: mandatory human-in-the-loop, audit trails, confidence thresholds that gate automated actions.`,
+    questions: [
+      'If the AI is wrong, what is the worst-case outcome? Financial loss? Legal exposure? Safety?',
+      'Is the outcome reversible? Can the user undo an AI-driven action?',
+      'Should there be a confidence threshold below which the AI escalates to a human?',
+      'Do you need an audit trail for AI decisions in this context?'
+    ]
+  },
+  transparency: {
+    icon: '🔎', title: 'Transparency Cost', color: '#C792EA',
+    spectrumLow: 'Self-evident', spectrumHigh: 'Heavy investment',
+    body: `This is a product design question, not a user attribute. <strong>How much engineering and UX investment does your team need to make this output checkable?</strong> Some AI outputs are naturally self-evident: generated code either runs or it doesn't, draft copy either sounds right or it doesn't. The user evaluates these just by looking at them. Others are inherently opaque: a strategic synthesis, a contract analysis, or a research summary might read well but contain errors that are invisible without deep investigation. High-transparency-cost features require significant investment in citations, confidence scores, drill-down interfaces, source previews, and explainability layers before users will trust them. Low-transparency-cost features can ship faster with less scaffolding because the output evaluates itself.`,
+    questions: [
+      'Can the user evaluate this output just by looking at it, or do they need to cross-reference external sources?',
+      'What would it take to make every claim in this output traceable to a source?',
+      'Does the output contain hidden assumptions or judgment calls that are invisible to the user?',
+      'What is the minimum transparency layer needed to ship: nothing, citations, confidence scores, source links, or full explainability?'
+    ]
+  }
+};
+
+let activeDim = null;
+const cx = 250, cy = 250, maxR = 170;
+let activePersonas = new Set(['swe']);
+
+function getPoint(dimIndex, value, total = 5) {
+  const angle = (Math.PI * 2 * dimIndex / total) - Math.PI / 2;
+  const r = (value / 100) * maxR;
+  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+}
+
+function getLabelPoint(dimIndex, total = 5) {
+  const angle = (Math.PI * 2 * dimIndex / total) - Math.PI / 2;
+  const r = maxR + 30;
+  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+}
+
+function buildRadar() {
+  const svg = document.getElementById('radar-svg');
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i = 0; i < 5; i++) {
+    const p = getLabelPoint(i);
+    const labelWidth = dimLabels[i].length * 4;
+    minX = Math.min(minX, p.x - labelWidth - 20);
+    minY = Math.min(minY, p.y - 20);
+    maxX = Math.max(maxX, p.x + labelWidth + 20);
+    maxY = Math.max(maxY, p.y + 20);
+  }
+  const pad = 15;
+  svg.setAttribute('viewBox', `${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}`);
+
+  let html = '';
+
+  [20, 40, 60, 80, 100].forEach(val => {
+    let points = [];
+    for (let i = 0; i < 5; i++) { const p = getPoint(i, val); points.push(`${p.x},${p.y}`); }
+    html += `<polygon points="${points.join(' ')}" fill="none" stroke="#2A2F3C" stroke-width="${val === 100 ? 1.5 : 0.7}" />`;
+  });
+
+  [20, 40, 60, 80, 100].forEach(val => {
+    const p = getPoint(0, val);
+    html += `<text x="${p.x + 6}" y="${p.y - 4}" fill="#3A3F4C" font-family="JetBrains Mono, monospace" font-size="9">${val}</text>`;
+  });
+
+  for (let i = 0; i < 5; i++) {
+    const p = getPoint(i, 100);
+    const isActive = activeDim === dimensions[i];
+    const stroke = isActive ? (dimDetails[dimensions[i]]?.color || '#4AE3B5') : '#2A2F3C';
+    const width = isActive ? 2 : 0.7;
+    if (isActive) html += `<line x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}" stroke="${stroke}" stroke-width="6" stroke-opacity="0.15" />`;
+    html += `<line x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}" stroke="${stroke}" stroke-width="${width}" />`;
+  }
+
+  for (let i = 0; i < 5; i++) {
+    const p = getLabelPoint(i);
+    let anchor = 'middle', dx = 0, dy = 0;
+    if (p.x < cx - 30) { anchor = 'end'; dx = -6; }
+    else if (p.x > cx + 30) { anchor = 'start'; dx = 6; }
+    if (i === 0) dy = -10;
+    if (i === 2 || i === 3) dy = 16;
+    const isActive = activeDim === dimensions[i];
+    const fill = isActive ? (dimDetails[dimensions[i]]?.color || '#4AE3B5') : '#8B90A0';
+    const weight = isActive ? '600' : '500';
+    html += `<text x="${p.x + dx}" y="${p.y + dy}" text-anchor="${anchor}" fill="${fill}" font-family="JetBrains Mono, monospace" font-size="11" font-weight="${weight}" style="cursor:pointer" onclick="toggleDim('${dimensions[i]}')">${dimLabels[i]}</text>`;
+  }
+
+  const sortedActive = [...activePersonas];
+  sortedActive.forEach(id => {
+    const persona = personas.find(p => p.id === id);
+    if (!persona) return;
+    let points = [];
+    dimensions.forEach((dim, i) => { const p = getPoint(i, persona.values[dim]); points.push(`${p.x},${p.y}`); });
+    const opacity = sortedActive.length > 1 ? 0.12 : 0.15;
+    const strokeOpacity = sortedActive.length > 1 ? 0.9 : 1;
+    html += `<polygon points="${points.join(' ')}" fill="${persona.color}" fill-opacity="${opacity}" stroke="${persona.color}" stroke-width="2.5" stroke-opacity="${strokeOpacity}" stroke-linejoin="round" />`;
+    dimensions.forEach((dim, i) => {
+      const p = getPoint(i, persona.values[dim]);
+      html += `<circle cx="${p.x}" cy="${p.y}" r="4.5" fill="${persona.color}" stroke="${persona.color}" stroke-width="1.5" fill-opacity="0.9" />`;
+      html += `<circle cx="${p.x}" cy="${p.y}" r="8" fill="${persona.color}" fill-opacity="0.15" />`;
+    });
+  });
+
+  svg.innerHTML = html;
+  buildDetail();
+}
+
+function buildDetail() {
+  const panel = document.getElementById('detail-panel');
+  const active = [...activePersonas];
+  if (active.length === 0) { panel.innerHTML = '<div class="comparison-note">Select a persona to see their tradeoff profile.</div>'; return; }
+  if (active.length > 1) {
+    const names = active.map(id => { const p = personas.find(pp => pp.id === id); return `<span style="color:${p.color}">${p.name}</span>`; }).join(' vs ');
+    panel.innerHTML = `<div class="comparison-note">Comparing ${names}. Look for where the shapes diverge. Those are the dimensions where your product decisions differ most.</div>`;
+    return;
+  }
+  const persona = personas.find(p => p.id === active[0]);
+  const barColors = { accuracy: '#4AE3B5', speed: '#F5A623', cost: '#E85D75', stakes: '#7B8CFF', transparency: '#C792EA' };
+  let html = `<div class="detail-header"><div class="detail-dot" style="background: ${persona.color}"></div><h3>${persona.name}</h3><span class="detail-task">${persona.task}</span></div><div class="detail-bars">`;
+  dimensions.forEach((dim, i) => {
+    const val = persona.values[dim];
+    html += `<div class="detail-bar-row"><span class="detail-bar-label">${dimLabels[i]}</span><div class="detail-bar-track"><div class="detail-bar-fill" style="width: ${val}%; background: ${barColors[dim]}"></div></div><span class="detail-bar-value">${val}</span></div>`;
+  });
+  html += `</div><div class="detail-insight" style="border-left-color: ${persona.color}"><div class="insight-label">Product Implication</div><p>${persona.insight}</p><span class="pattern-tag">${persona.pattern}</span></div>`;
+  panel.innerHTML = html;
+}
+
+function buildButtons() {
+  const container = document.getElementById('persona-buttons');
+  let html = '';
+  personas.forEach(p => {
+    const isActive = activePersonas.has(p.id);
+    html += `<button class="persona-btn ${isActive ? 'active' : ''}" style="--persona-color: ${p.color}" onclick="togglePersona('${p.id}')"><span class="persona-dot" style="background: ${p.color}; opacity: ${isActive ? 1 : 0.4}"></span><div>${p.name}<span class="persona-task">${p.task}</span></div></button>`;
+  });
+  container.innerHTML = html;
+}
+
+function togglePersona(id) {
+  if (activePersonas.has(id)) activePersonas.delete(id);
+  else activePersonas.add(id);
+  buildButtons(); buildRadar();
+}
+
+function toggleDim(dimId) {
+  if (activeDim === dimId) { closeDimModalForce(); return; }
+  activeDim = dimId; updateDimLegend(); buildDimModal(); buildRadar();
+}
+
+function closeDimModal(event) { if (event.target === event.currentTarget) closeDimModalForce(); }
+function closeDimModalForce() { activeDim = null; updateDimLegend(); document.getElementById('dim-modal').classList.remove('open'); buildRadar(); }
+function updateDimLegend() { document.querySelectorAll('.dim-legend-item').forEach(el => el.classList.toggle('active', el.dataset.dim === activeDim)); }
+
+function buildDimModal() {
+  if (!activeDim) return;
+  const d = dimDetails[activeDim];
+  const modal = document.getElementById('dim-modal');
+  const body = document.getElementById('dim-modal-body');
+  const content = document.getElementById('dim-modal-content');
+  content.setAttribute('style', `border-top: 3px solid ${d.color}`);
+
+  const questionsHtml = d.questions.map(q => `<div class="dim-q">${q}</div>`).join('');
+  const personaScoresHtml = personas.map(p => {
+    const val = p.values[activeDim];
+    return `<div class="dim-score-row"><div class="dim-score-name"><span class="dim-score-dot" style="background: ${p.color}"></span>${p.name}</div><div class="dim-score-track"><div class="dim-score-fill" style="width: ${val}%; background: ${p.color}"></div></div><span class="dim-score-val">${val}</span></div>`;
+  }).join('');
+
+  const subtitles = {
+    accuracy: 'How right does it need to be?',
+    speed: 'What latency can users tolerate?',
+    cost: 'What is the real price of this feature?',
+    stakes: 'What happens when the AI is wrong?',
+    transparency: 'How much investment to make the output checkable?'
+  };
+
+  body.innerHTML = `
+    <div class="dim-detail-title"><span>${d.icon}</span> ${d.title}</div>
+    <div class="dim-subtitle">${subtitles[activeDim]}</div>
+    <div class="dim-spectrum"><span class="spec-label">${d.spectrumLow}</span><div class="spec-bar" style="background: linear-gradient(90deg, var(--border), ${d.color})"></div><span class="spec-label">${d.spectrumHigh}</span></div>
+    <div class="dim-detail-body">${d.body}</div>
+    <div class="dim-persona-scores"><div class="dim-persona-scores-title">Score by persona</div>${personaScoresHtml}</div>
+    <div class="dim-questions"><div class="dim-questions-title">Questions to ask</div>${questionsHtml}</div>
+  `;
+  modal.classList.add('open');
+}
+
+buildButtons();
+buildRadar();
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && activeDim) closeDimModalForce(); });
+</script>
+</body>
+</html>
